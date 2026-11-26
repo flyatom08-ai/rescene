@@ -698,7 +698,6 @@ function showNote(s, sec = 7) { note.textContent = s; noteUntil = performance.no
 const st0 = r => Math.max(0, r.s - 1.4);
 function loadYT() {
   if (yt.loading) return; yt.loading = true;
-  yt.hold = true; yt.holdT = performance.now();
   if (location.protocol === 'file:') showNote("파일을 바로 열면 유튜브가 곡 재생을 막을 수 있습니다. 같은 폴더의 '리센느 열기.cmd'로 열어 주세요. 곡이 안 나오는 구간은 합성 비트로 대신합니다.", 9);
   window.onYouTubeIframeAPIReady = () => {
     yt.ready = true;
@@ -721,14 +720,9 @@ function warmCheck() {
   });
 }
 setInterval(warmCheck, 250);
+if (location.protocol !== 'file:') loadYT();  // 열자마자 소리 없이 미리 불러 광고를 뒤에서 넘긴다
 function ytTick(t) {
   if (!yt.ready) { ytc.style.opacity = 0; return; }
-  // 첫 재생: 곡들이 광고를 소리 없이 넘길 때까지(최대 75초) 인트로를 되감아 기다린다
-  if (yt.hold && soundOn) {
-    const done = TR.every((r, i) => r.fail || yt.warm[i] === 2);
-    if (done || performance.now() - yt.holdT > 75000) { yt.hold = false; noteUntil = 0; }
-    else { if (t >= T0 - .6) { loopStart = ac.currentTime - 9; schedUntil = ac.currentTime; } showNote(`곡 불러오는 중 ${TR.filter((r, i) => r.fail || yt.warm[i] === 2).length}/6 · 유튜브 광고는 소리 없이 넘기고 있어요`, 1.5); }
-  }
   let want = -1; TR.forEach((r, i) => { if (!r.fail && yt.warm[i] === 2 && t >= r.t0 - 1.4 && t < r.t0 + TD) want = i; });
   if (!soundOn || frozen !== null) want = -1;
   if (want !== yt.cur) {
