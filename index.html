@@ -677,7 +677,7 @@ for (let b = 0; B0 + b * BEAT < LOOP - .9; b++) {
 EV.sort((a, b) => a[0] - b[0]);
 
 /* ---------- 유튜브(공식 MV 구간 재생) ---------- */
-const yt = { ps: [], warm: [0,0,0,0,0,0], ready: false, cur: -1, vol: -1, loading: false, err: null };
+const yt = { ps: [], warm: [0,0,0,0,0,0], wt: [], tries: [0,0,0,0,0,0], ready: false, cur: -1, vol: -1, loading: false, err: null };
 window.__yt = yt; window.__TR = TR;
 const trackIdx = tt => TR.findIndex(r => tt >= r.t0 - .1 && tt < r.t0 + TD);
 // 곡별 플레이어를 소리 켤 때 미리 음소거로 돌려 광고를 안 보이게 소진하고, 본편 구간에 도착하면 멈춰 대기(warm=2)
@@ -704,7 +704,7 @@ function loadYT() {
     TR.forEach((r, i) => {
       yt.ps[i] = new YT.Player('ytp' + i, { width: 240, height: 135, videoId: r.id,
         playerVars: { controls: 0, disablekb: 1, playsinline: 1, rel: 0, fs: 0, iv_load_policy: 3, autoplay: 1, mute: 1, start: Math.floor(st0(r)), origin: location.protocol === 'file:' ? undefined : location.origin },
-        events: { onReady: e => { try { e.target.mute(); e.target.seekTo(st0(r), true); e.target.playVideo(); } catch (x) {} yt.warm[i] = 1; },
+        events: { onReady: e => { try { e.target.mute(); e.target.seekTo(st0(r), true); e.target.playVideo(); } catch (x) {} yt.warm[i] = 1; yt.wt[i] = performance.now(); },
           onError: e => { yt.err = e.data; r.fail = true; if (location.protocol === 'file:') TR.forEach(x => x.fail = true); showNote(location.protocol === 'file:' ? "html 파일을 바로 열어서 유튜브가 곡을 막았습니다. 폴더의 '리센느 열기.cmd'로 열어 주세요." : `${r.name}은 유튜브 밖 재생이 막혀 합성 비트로 대신합니다.`, 8); } } });
     });
   };
@@ -714,6 +714,8 @@ function loadYT() {
 function warmCheck() {
   TR.forEach((r, i) => {
     if (yt.warm[i] !== 1 || r.fail) return; const p = yt.ps[i];
+    // 광고가 25초 넘게 이어지면 같은 곡을 다시 불러 짧은 광고나 광고 없는 재생을 다시 받는다(최대 6번)
+    if (performance.now() - yt.wt[i] > 25000 && yt.tries[i] < 6) { yt.tries[i]++; yt.wt[i] = performance.now(); try { p.mute(); p.loadVideoById({ videoId: r.id, startSeconds: st0(r) }); } catch (e) {} return; }
     try { if (p.getPlayerState() === 1 && p.getVideoData().video_id === r.id && p.getCurrentTime() >= st0(r) + .6) { p.pauseVideo(); p.seekTo(st0(r), true); yt.warm[i] = 2; } } catch (e) {}
   });
 }
